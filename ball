@@ -196,11 +196,3 @@ draw();
 </script>
 </body>
 </html>
-"""
-
-# Save enhanced version to file
-enhanced_path_final = "/mnt/data/brick_game_full_enhanced.html"
-with open(enhanced_path_final, "w") as f:
-    f.write(enhanced_game_code)
-
-enhanced_path_final
