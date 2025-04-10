@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>늘이가 만든든 벽돌깨기</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: #000;
+      box-shadow: 0 0 30px #00ffe0;
+      touch-action: none;
+    }
+    #scoreboard {
+      text-align: center;
+      color: #00ffe0;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="360" height="480"></canvas>
+<div id="scoreboard">점수: <span id="score">0</span></div>
+<audio id="bgm" src="https://upload.wikimedia.org/wikipedia/commons/transcoded/8/83/Electronic_Music.ogg/Electronic_Music.ogg.mp3" loop autoplay></audio>
+<audio id="hit" src="https://www.soundjay.com/button/sounds/button-16.mp3"></audio>
+<audio id="gameover" src="https://www.soundjay.com/button/sounds/button-10.mp3"></audio>
+<audio id="clear" src="https://www.soundjay.com/button/sounds/button-4.mp3"></audio>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreDisplay = document.getElementById("score");
+const bgm = document.getElementById("bgm");
+const hitSound = document.getElementById("hit");
+const gameOverSound = document.getElementById("gameover");
+const clearSound = document.getElementById("clear");
+
+let score = 0;
+
+let ballX = canvas.width / 2;
+let ballY = canvas.height - 30;
+let ballDX = 2;
+let ballDY = -2;
+const ballRadius = 8;
+
+const paddleHeight = 10;
+const paddleWidth = 75;
+let paddleX = (canvas.width - paddleWidth) / 2;
+
+const brickRowCount = 5;
+const brickColumnCount = 6;
+const brickWidth = 50;
+const brickHeight = 15;
+const brickPadding = 10;
+const brickOffsetTop = 30;
+const brickOffsetLeft = 15;
+
+let bricks = [];
+for(let c=0; c<brickColumnCount; c++) {
+  bricks[c] = [];
+  for(let r=0; r<brickRowCount; r++) {
+    bricks[c][r] = { x: 0, y: 0, status: 1 };
+  }
+}
+
+let rightPressed = false;
+let leftPressed = false;
+
+document.addEventListener("keydown", keyDownHandler);
+document.addEventListener("keyup", keyUpHandler);
+canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+
+function keyDownHandler(e) {
+  if(e.key === "Right" || e.key === "ArrowRight") rightPressed = true;
+  else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = true;
+}
+function keyUpHandler(e) {
+  if(e.key === "Right" || e.key === "ArrowRight") rightPressed = false;
+  else if(e.key === "Left" || e.key === "ArrowLeft") leftPressed = false;
+}
+function handleTouchMove(e) {
+  let touchX = e.touches[0].clientX;
+  let rect = canvas.getBoundingClientRect();
+  paddleX = touchX - rect.left - paddleWidth / 2;
+  e.preventDefault();
+}
+
+function drawBall() {
+  ctx.beginPath();
+  ctx.arc(ballX, ballY, ballRadius, 0, Math.PI*2);
+  ctx.fillStyle = "#00ffe0";
+  ctx.shadowColor = "#00ffe0";
+  ctx.shadowBlur = 10;
+  ctx.fill();
+  ctx.closePath();
+}
+
+function drawPaddle() {
+  ctx.beginPath();
+  ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+  ctx.fillStyle = "#00ffe0";
+  ctx.shadowColor = "#00ffe0";
+  ctx.shadowBlur = 15;
+  ctx.fill();
+  ctx.closePath();
+}
+
+function drawBricks() {
+  for(let c=0; c<brickColumnCount; c++) {
+    for(let r=0; r<brickRowCount; r++) {
+      if(bricks[c][r].status == 1) {
+        let brickX = (c*(brickWidth+brickPadding)) + brickOffsetLeft;
+        let brickY = (r*(brickHeight+brickPadding)) + brickOffsetTop;
+        bricks[c][r].x = brickX;
+        bricks[c][r].y = brickY;
+        ctx.beginPath();
+        ctx.rect(brickX, brickY, brickWidth, brickHeight);
+        ctx.fillStyle = "#39ff14";
+        ctx.shadowColor = "#39ff14";
+        ctx.shadowBlur = 15;
+        ctx.fill();
+        ctx.closePath();
+      }
+    }
+  }
+}
+
+function collisionDetection() {
+  for(let c=0; c<brickColumnCount; c++) {
+    for(let r=0; r<brickRowCount; r++) {
+      let b = bricks[c][r];
+      if(b.status == 1) {
+        if(ballX > b.x && ballX < b.x+brickWidth && ballY > b.y && ballY < b.y+brickHeight) {
+          ballDY = -ballDY;
+          b.status = 0;
+          score += 10;
+          hitSound.play();
+          scoreDisplay.textContent = score;
+          if(score === brickRowCount * brickColumnCount * 10) {
+            clearSound.play();
+            setTimeout(() => {
+              alert("우와! 벽돌 다 부쉈다! 점수: " + score);
+              document.location.reload();
+            }, 300);
+          }
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawBricks();
+  drawBall();
+  drawPaddle();
+  collisionDetection();
+
+  if(ballX + ballDX > canvas.width - ballRadius || ballX + ballDX < ballRadius) {
+    ballDX = -ballDX;
+  }
+  if(ballY + ballDY < ballRadius) {
+    ballDY = -ballDY;
+  } else if(ballY + ballDY > canvas.height - ballRadius) {
+    if(ballX > paddleX && ballX < paddleX + paddleWidth) {
+      ballDY = -ballDY;
+    } else {
+      gameOverSound.play();
+      setTimeout(() => {
+        alert("게임 오버... 너 다음엔 더 잘할 수 있어! 점수: " + score);
+        document.location.reload();
+      }, 300);
+    }
+  }
+
+  ballX += ballDX;
+  ballY += ballDY;
+
+  if(rightPressed && paddleX < canvas.width - paddleWidth) {
+    paddleX += 5;
+  } else if(leftPressed && paddleX > 0) {
+    paddleX -= 5;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>
+"""
+
+# Save enhanced version to file
+enhanced_path_final = "/mnt/data/brick_game_full_enhanced.html"
+with open(enhanced_path_final, "w") as f:
+    f.write(enhanced_game_code)
+
+enhanced_path_final
